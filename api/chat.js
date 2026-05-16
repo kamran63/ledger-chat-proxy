@@ -1,6 +1,5 @@
 // api/chat.js  (CommonJS version)
 exports.handler = async function (event) {
-    // فقط درخواست‌های POST را قبول می‌کنیم
     if (event.httpMethod !== 'POST') {
         return {
             statusCode: 405,
@@ -19,7 +18,8 @@ exports.handler = async function (event) {
             };
         }
 
-        const response = await fetch('https://api.avalai.ir/v1/chat/completions', {
+        // 🚀 تغییر اصلی: استفاده از دامنه جدید AvalAI با شبکه Cloudflare
+        const response = await fetch('https://api.avalai.org/v1/chat/completions', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
