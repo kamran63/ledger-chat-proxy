@@ -1,5 +1,6 @@
-// api/chat.js  (CommonJS version)
+// api/chat.js  (نسخه CommonJS مخصوص Netlify Functions)
 exports.handler = async function (event) {
+    // فقط درخواست‌های POST را قبول می‌کنیم
     if (event.httpMethod !== 'POST') {
         return {
             statusCode: 405,
@@ -11,14 +12,15 @@ exports.handler = async function (event) {
         const { messages, tools } = JSON.parse(event.body);
         const apiKey = process.env.OPENAI_API_KEY;
 
+        // بررسی وجود کلید API در تنظیمات Netlify
         if (!apiKey) {
             return {
                 statusCode: 500,
-                body: JSON.stringify({ error: 'کلید API در سرور تنظیم نشده است.' }),
+                body: JSON.stringify({ error: 'کلید API در سرور تنظیم نشده است. به Netlify Environment Variables بروید.' }),
             };
         }
 
-        // 🚀 تغییر اصلی: استفاده از دامنه جدید AvalAI با شبکه Cloudflare
+        // اتصال به AvalAI با دامنه بین‌المللی (مناسب برای سرورهای خارج از ایران)
         const response = await fetch('https://api.avalai.org/v1/chat/completions', {
             method: 'POST',
             headers: {
@@ -30,8 +32,7 @@ exports.handler = async function (event) {
                 messages: [
                     {
                         role: 'system',
-                        content:
-                            'تو یک دستیار حسابداری فارسی‌زبان هستی. کارها را با توابع انجام بده.',
+                        content: 'تو یک دستیار حسابداری فارسی‌زبان هستی. کارها را با توابع انجام بده.',
                     },
                     ...messages,
                 ],
@@ -40,6 +41,7 @@ exports.handler = async function (event) {
             }),
         });
 
+        // اگر AvalAI پاسخی غیر از 200 داد، خطای آن را برگردان
         if (!response.ok) {
             const errText = await response.text();
             return {
@@ -53,6 +55,7 @@ exports.handler = async function (event) {
         const data = await response.json();
         const message = data.choices[0].message;
 
+        // ارسال موفقیت‌آمیز پاسخ به برنامه
         return {
             statusCode: 200,
             body: JSON.stringify({
@@ -61,6 +64,7 @@ exports.handler = async function (event) {
             }),
         };
     } catch (error) {
+        // خطای غیرمنتظره (مثلاً قطعی شبکه)
         return {
             statusCode: 500,
             body: JSON.stringify({
