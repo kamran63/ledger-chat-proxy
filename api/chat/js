@@ -5,7 +5,8 @@ export default async function handler(req, res) {
     if (!apiKey) return res.status(500).json({ error: 'کلید API تنظیم نشده' });
 
     try {
-        const response = await fetch('https://api.openai.com/v1/chat/completions', {
+        // تغییر اصلی: آدرس API به AvalAI
+        const response = await fetch('https://api.avalai.ir/v1/chat/completions', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -28,6 +29,6 @@ export default async function handler(req, res) {
             tool_calls: message.tool_calls || []
         });
     } catch (error) {
-        return res.status(500).json({ error: 'خطا در ارتباط با ChatGPT' });
+        return res.status(500).json({ error: 'خطا در ارتباط با AvalAI' });
     }
 }
