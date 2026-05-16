@@ -1,9 +1,25 @@
-// api/chat.js  (نسخه CommonJS مخصوص Netlify Functions)
+// api/chat.js  (نسخه CommonJS با پشتیبانی CORS)
 exports.handler = async function (event) {
-    // فقط درخواست‌های POST را قبول می‌کنیم
+    // هدرهای CORS برای رفع خطای fetch در مرورگر
+    const headers = {
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Headers': 'Content-Type',
+        'Access-Control-Allow-Methods': 'POST, OPTIONS',
+    };
+
+    // مدیریت درخواست پیش‌پرواز (Preflight) که مرورگرهای موبایل گاهی می‌فرستند
+    if (event.httpMethod === 'OPTIONS') {
+        return {
+            statusCode: 200,
+            headers,
+            body: '',
+        };
+    }
+
     if (event.httpMethod !== 'POST') {
         return {
             statusCode: 405,
+            headers,
             body: JSON.stringify({ error: 'فقط متد POST قبول است' }),
         };
     }
@@ -12,15 +28,14 @@ exports.handler = async function (event) {
         const { messages, tools } = JSON.parse(event.body);
         const apiKey = process.env.OPENAI_API_KEY;
 
-        // بررسی وجود کلید API در تنظیمات Netlify
         if (!apiKey) {
             return {
                 statusCode: 500,
-                body: JSON.stringify({ error: 'کلید API در سرور تنظیم نشده است. به Netlify Environment Variables بروید.' }),
+                headers,
+                body: JSON.stringify({ error: 'کلید API تنظیم نشده' }),
             };
         }
 
-        // اتصال به AvalAI با دامنه بین‌المللی (مناسب برای سرورهای خارج از ایران)
         const response = await fetch('https://api.avalai.org/v1/chat/completions', {
             method: 'POST',
             headers: {
@@ -30,10 +45,7 @@ exports.handler = async function (event) {
             body: JSON.stringify({
                 model: 'gpt-4o-mini',
                 messages: [
-                    {
-                        role: 'system',
-                        content: 'تو یک دستیار حسابداری فارسی‌زبان هستی. کارها را با توابع انجام بده.',
-                    },
+                    { role: 'system', content: 'تو یک دستیار حسابداری فارسی‌زبان هستی.' },
                     ...messages,
                 ],
                 tools: tools,
@@ -41,36 +53,31 @@ exports.handler = async function (event) {
             }),
         });
 
-        // اگر AvalAI پاسخی غیر از 200 داد، خطای آن را برگردان
         if (!response.ok) {
             const errText = await response.text();
             return {
                 statusCode: 500,
-                body: JSON.stringify({
-                    error: `AvalAI پاسخ خطا داد (${response.status}): ${errText}`,
-                }),
+                headers,
+                body: JSON.stringify({ error: `خطای AvalAI (${response.status}): ${errText}` }),
             };
         }
 
         const data = await response.json();
         const message = data.choices[0].message;
 
-        // ارسال موفقیت‌آمیز پاسخ به برنامه
         return {
             statusCode: 200,
+            headers,
             body: JSON.stringify({
                 reply: message.content,
                 tool_calls: message.tool_calls || [],
             }),
         };
     } catch (error) {
-        // خطای غیرمنتظره (مثلاً قطعی شبکه)
         return {
             statusCode: 500,
-            body: JSON.stringify({
-                error: 'خطای سرور',
-                message: error.message,
-            }),
+            headers,
+            body: JSON.stringify({ error: 'خطای سرور', message: error.message }),
         };
     }
 };
